@@ -62,7 +62,7 @@ TERA_API = 'https://my-noor-queen-api.woodmirror.workers.dev/api?url='
 URL_RE = re.compile(r'(https?://[^\s]+)')
 
 # Configurable limits
-MAX_UPLOAD = int(os.getenv('MAX_UPLOAD_MB', '2048')) * 1024 * 1024  # default 2GB
+MAX_UPLOAD = int(os.getenv('MAX_UPLOAD_MB', '50')) * 1024 * 1024  # default 50MB
 LOCAL_DOWNLOAD_LIMIT = MAX_UPLOAD  # do not locally download more than upload limit
 DOWNLOAD_TIMEOUT = 120  # seconds
 
@@ -1111,14 +1111,12 @@ def handle_api_for_url(url):
                                 size_bytes = None
                             caption = clean_caption(data.get('title') or data.get('file_name') or data.get('filename'))
                             LOG.info(f'✅ Terabox: {api_name} succeeded on attempt {attempt+1}')
-                            # For Terabox, prefer sending a link button; large remote uploads often fail.
                             return {
                                 'url': dl,
                                 'size_bytes': size_bytes,
                                 'file_name': file_name,
                                 'caption': caption,
                                 'button_url': dl,
-                                'no_upload': True,
                                 'raw_entry': {'download_link': data.get('download_link'), 'proxy_url': data.get('proxy_url')},
                                 'raw_data': data
                             }
@@ -1136,7 +1134,6 @@ def handle_api_for_url(url):
                 if ytdlp_result:
                     LOG.info(f'✅ Terabox: yt-dlp fallback succeeded on attempt {yt_attempt+1}')
                     if ytdlp_result:
-                        ytdlp_result['no_upload'] = True
                         return ytdlp_result
             except Exception as e:
                 LOG.warning(f'Terabox yt-dlp attempt {yt_attempt+1} failed: {e}')
@@ -1389,7 +1386,7 @@ def cmd_help(msg):
 <b>Step 2:</b> Paste and send the URL to me
 
 <b>Step 3:</b> Receive your file!
-  • Files under 2GB → Sent directly
+    • Files under 50MB → Sent directly
   • Larger files → Download link provided
 
 <b>⚙️ Features:</b>
@@ -1436,7 +1433,7 @@ Download media from multiple platforms instantly!
 
 <b>📊 Statistics:</b>
   • Platforms supported: 4+
-  • File size limit: 2GB direct upload
+    • File size limit: 50MB direct upload
   • Processing time: ~5-10 seconds
 
 <b>🔐 Privacy:</b>
@@ -1517,16 +1514,11 @@ def handle_yt_upload_callback(call):
         chat_id = call.message.chat.id
         username = call.from_user.username or call.from_user.first_name or 'User'
         
-        # Build download button
-        kb_dl = InlineKeyboardMarkup()
-        kb_dl.add(InlineKeyboardButton("⬇️ Download Now", url=best['url']))
-        
-        # Update message to show upload in progress
+        # Update message to show upload in progress (no manual download button)
         bot.edit_message_text(
-            f"<b>📤 Uploading best quality...</b>\n\nIf upload takes too long, use the button below:",
+            f"<b>📤 Uploading best quality...</b>",
             chat_id,
-            call.message.message_id,
-            reply_markup=kb_dl
+            call.message.message_id
         )
         
         dl_url = best['url']
@@ -1544,8 +1536,7 @@ def handle_yt_upload_callback(call):
                 bot.edit_message_text(
                     f"<b>🔄 Merging video + audio...</b>\n\n<code>{best.get('resolution')}</code> + <code>{audio_best.get('extension')}</code>",
                     chat_id,
-                    call.message.message_id,
-                    reply_markup=kb_dl
+                    call.message.message_id
                 )
                 ffmpeg_path = ensure_ffmpeg()
                 if not ffmpeg_path:
@@ -1597,10 +1588,9 @@ def handle_yt_upload_callback(call):
                             bot.delete_message(chat_id, call.message.message_id)
                         else:
                             bot.edit_message_text(
-                                caption + "\n\n<b>⚠️ Could not upload. Use Download Now button above.</b>",
+                                caption + "\n\n<b>⚠️ Could not upload directly. Use the quality link buttons above.</b>",
                                 chat_id,
-                                call.message.message_id,
-                                reply_markup=kb_dl
+                                call.message.message_id
                             )
             else:
                 # For video_only or large files, perform local download attempt (silent if no merge)
@@ -1613,18 +1603,16 @@ def handle_yt_upload_callback(call):
                         bot.delete_message(chat_id, call.message.message_id)
                     else:
                         bot.edit_message_text(
-                            caption + "\n\n<b>⚠️ File too large or silent; use Download button.</b>",
+                            caption + "\n\n<b>⚠️ File too large or silent; use the quality link buttons above.</b>",
                             chat_id,
-                            call.message.message_id,
-                            reply_markup=kb_dl
+                            call.message.message_id
                         )
         except Exception:
             LOG.exception('Upload failed in callback')
             bot.edit_message_text(
-                caption + "\n\n<b>⚠️ Upload failed. Use Download Now button.</b>",
+                caption + "\n\n<b>⚠️ Upload failed. Use the quality link buttons above.</b>",
                 chat_id,
-                call.message.message_id,
-                reply_markup=kb_dl
+                call.message.message_id
             )
         
         bot.answer_callback_query(call.id)
@@ -2093,15 +2081,11 @@ def handle_message(msg):
     # Decide if we can attempt an upload (allow when size unknown)
     size_known = size_bytes is not None
     can_upload = (size_bytes is None) or (size_bytes <= MAX_UPLOAD)
-    # Honor no_upload flag (e.g., Terabox reliability or large files)
-    if result.get('no_upload'):
-        can_upload = False
+    # Proceed with upload based on size only
 
     if can_upload:
-        # Add Download Now button during upload
-        kb_upload = InlineKeyboardMarkup()
-        kb_upload.add(InlineKeyboardButton("⬇️ Download Now", url=(button_url or dl_url)))
-        upload_msg = bot.send_message(chat_id, "<b>📤 Uploading...</b>\n\n<i>Taking too long? Use Download Now button below.</i>", reply_markup=kb_upload)
+        # Show uploading message without manual download button
+        upload_msg = bot.send_message(chat_id, "<b>📤 Uploading...</b>")
         try:
             # First attempt: remote URL send
             if is_image:
@@ -2150,8 +2134,7 @@ def handle_message(msg):
                         f"Progress: {percent:.1f}%\n"
                         f"Size: {downloaded_mb:.1f} MB / {total_mb:.1f} MB",
                         chat_id,
-                        upload_msg.message_id,
-                        reply_markup=kb_upload
+                        upload_msg.message_id
                     )
                 except Exception:
                     pass  # Ignore edit errors
