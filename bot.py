@@ -1329,7 +1329,7 @@ def handle_api_for_url(url):
 def cmd_start(msg):
     welcome_art = """
 ╔═══════════════════════════════════════╗
-║                🎬 <b>POCKET DOWNLOADER BOT</b> 🎬       ║
+║                       🎬 <b>POCKET DOWNLOADER BOT</b> 🎬                  ║
 ╚═══════════════════════════════════════╝
 
 <b>Welcome to your personal pocket downloader!</b>
