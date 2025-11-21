@@ -1329,7 +1329,7 @@ def handle_api_for_url(url):
 def cmd_start(msg):
     welcome_art = """
 ╔═══════════════════════════════════════╗
-║  🎬 <b>MEDIA DOWNLOADER BOT</b> 🎬       ║
+║      🎬 <b>MEDIA DOWNLOADER BOT</b> 🎬       ║
 ╚═══════════════════════════════════════╝
 
 <b>Welcome to your personal media downloader!</b>
@@ -1390,8 +1390,8 @@ def cmd_help(msg):
   • Larger files → Download link provided
 
 <b>⚙️ Features:</b>
-    ✅ Multiple quality options (YouTube)
-    ✅ No-watermark TikTok videos
+  ✅ Multiple quality options (YouTube)
+  ✅ No-watermark TikTok videos
   ✅ Fast processing
   ✅ High-quality downloads
   ✅ No ads or watermarks
