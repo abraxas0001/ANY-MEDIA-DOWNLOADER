@@ -1943,18 +1943,20 @@ def handle_message(msg):
         FORMAT_SESSIONS[session_id] = qualities
 
         kb = InlineKeyboardMarkup()
-        # Download best quality button (renamed from Upload Best Video) - at top
+        # Download best quality button (top priority)
         kb.add(InlineKeyboardButton("⬇️ Download Now", callback_data=f"ytupload:{session_id}:{best_index}"))
         # Audio extraction button
         kb.add(InlineKeyboardButton("🎵 Extract Audio (MP3)", callback_data=f"ytaudio:{session_id}"))
-        # Add quality buttons (limit to top 8 to avoid markup being too long)
+        
+        # Add inline quality buttons for direct upload (limit to top 8)
         for i, q in enumerate(qualities[:8]):
             txt = q['resolution'] or q['extension']
             if q.get('size_bytes'):
                 txt += f" {human_size(q['size_bytes'])}"
             if i == best_index:
                 txt += " ⭐"
-            kb.add(InlineKeyboardButton(txt, url=q['url']))
+            # Use callback_data for inline upload instead of external URL
+            kb.add(InlineKeyboardButton(txt, callback_data=f"ytupload:{session_id}:{i}"))
 
         bot.edit_message_text(
             f"<b>✅ Formats Ready</b>\n<b>📝 Title:</b> {title_caption}\n\n<b>🎬 Download Options:</b>\nClick <b>Download Now</b> for best quality or choose a specific quality below. ⭐ marks best quality.\n\n<b>💡 Tip:</b> Use <b>Extract Audio</b> to get MP3.",
