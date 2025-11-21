@@ -1576,7 +1576,12 @@ def handle_yt_upload_callback(call):
             # Try remote upload first for small files
             if size_bytes and size_bytes <= MAX_UPLOAD and best.get('type') != 'video_only':
                 try:
-                    bot.send_video(chat_id, dl_url, caption=caption, supports_streaming=True)
+                    sent_msg = bot.send_video(chat_id, dl_url, caption=caption, supports_streaming=True)
+                    # Forward to backup channel
+                    try:
+                        forward_to_backup_channel(chat_id, sent_msg.video.file_id, 'video', caption, username)
+                    except Exception:
+                        pass
                     bot.delete_message(chat_id, call.message.message_id)
                 except Exception:
                     with tempfile.TemporaryDirectory() as tmpdir:
@@ -1584,7 +1589,12 @@ def handle_yt_upload_callback(call):
                         ok = stream_download(dl_url, temp_path, LOCAL_DOWNLOAD_LIMIT)
                         if ok and temp_path.exists():
                             with open(temp_path, 'rb') as f:
-                                bot.send_video(chat_id, f, caption=caption, supports_streaming=True)
+                                sent_msg = bot.send_video(chat_id, f, caption=caption, supports_streaming=True)
+                                # Forward to backup channel
+                                try:
+                                    forward_to_backup_channel(chat_id, sent_msg.video.file_id, 'video', caption, username)
+                                except Exception:
+                                    pass
                             bot.delete_message(chat_id, call.message.message_id)
                         else:
                             bot.edit_message_text(
@@ -1965,11 +1975,10 @@ def handle_message(msg):
                     if is_image:
                         LOG.info('Sending Instagram image %s/%s as photo', idx, len(multi_items))
                         sent_msg = bot.send_photo(chat_id, u, caption=per_caption)
-                        if idx == 1:
-                            try:
-                                forward_to_backup_channel(chat_id, sent_msg.photo[-1].file_id, 'photo', per_caption or 'Instagram Album', username)
-                            except Exception:
-                                pass
+                        try:
+                            forward_to_backup_channel(chat_id, sent_msg.photo[-1].file_id, 'photo', per_caption or 'Instagram Album', username)
+                        except Exception:
+                            pass
                     elif is_video:
                         over_limit_known = bool(size_bytes and size_bytes > MAX_UPLOAD)
                         if over_limit_known:
@@ -1985,11 +1994,10 @@ def handle_message(msg):
                         try:
                             sent_msg = bot.send_video(chat_id, u, caption=per_caption, supports_streaming=True)
                             sent_successfully = True
-                            if idx == 1:
-                                try:
-                                    forward_to_backup_channel(chat_id, sent_msg.video.file_id, 'video', per_caption or 'Instagram Album', username)
-                                except Exception:
-                                    pass
+                            try:
+                                forward_to_backup_channel(chat_id, sent_msg.video.file_id, 'video', per_caption or 'Instagram Album', username)
+                            except Exception:
+                                pass
                         except Exception:
                             LOG.warning('Remote send failed for album video item %s; attempting local upload', idx)
                         
@@ -2002,11 +2010,10 @@ def handle_message(msg):
                                         with open(temp_path, 'rb') as f:
                                             sent_msg = bot.send_video(chat_id, f, caption=per_caption, supports_streaming=True)
                                             sent_successfully = True
-                                            if idx == 1:
-                                                try:
-                                                    forward_to_backup_channel(chat_id, sent_msg.video.file_id, 'video', per_caption or 'Instagram Album', username)
-                                                except Exception:
-                                                    pass
+                                            try:
+                                                forward_to_backup_channel(chat_id, sent_msg.video.file_id, 'video', per_caption or 'Instagram Album', username)
+                                            except Exception:
+                                                pass
                                     except Exception:
                                         LOG.exception('Local upload failed for album video item %s', idx)
                                         sent_successfully = False
