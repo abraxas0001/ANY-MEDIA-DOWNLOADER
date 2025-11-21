@@ -508,91 +508,10 @@ def get_terabox_with_ytdlp_fallback(url):
 
 
 def process_youtube(url):
-    """Use new high-quality YouTube API with format selection (360p-1440p), then legacy API, then yt-dlp fallback."""
-    # Try new high-quality API first (supports 360, 480, 720, 1080, 1440)
-    LOG.info('YouTube: Trying HQ API first...')
-    try:
-        # Step 1: Get video info and hash
-        get_resp = fetch_json(YOUTUBE_HQ_API, params={'function': 'get_task', 'url': url})
-        LOG.info(f'YouTube HQ API get_task response: {get_resp}')
-        
-        if get_resp and not get_resp.get('error'):
-            video_hash = get_resp.get('hash')
-            title = get_resp.get('title', 'YouTube Video')
-            thumbnail = get_resp.get('thumbnail')
-            
-            if video_hash:
-                LOG.info(f'YouTube HQ API: Got hash {video_hash}, fetching qualities...')
-                # Step 2: Create tasks for different quality formats
-                formats_to_try = ['1440', '1080', '720', '480', '360']  # Try highest first
-                qualities = []
-                
-                for fmt in formats_to_try:
-                    try:
-                        # Create task with specific format
-                        create_resp = fetch_json(YOUTUBE_HQ_API, params={'function': 'create_task', 'hash': video_hash, 'format': fmt})
-                        if create_resp and not create_resp.get('error'):
-                            task_id = create_resp.get('task_id')
-                            if task_id:
-                                # Check task status - may need multiple attempts
-                                for attempt in range(3):
-                                    time.sleep(1)  # Wait for task processing
-                                    check_resp = fetch_json(YOUTUBE_HQ_API, params={'function': 'check_task', 'task_id': task_id})
-                                    if check_resp and check_resp.get('status') == 'completed':
-                                        download_url = check_resp.get('download_url')
-                                        if download_url:
-                                            size_bytes = check_resp.get('file_size')
-                                            qualities.append({
-                                                'url': download_url,
-                                                'extension': 'mp4',
-                                                'resolution': f'{fmt}p',
-                                                'size_bytes': size_bytes,
-                                                'label': f'{fmt}p' + (f' {human_size(size_bytes)}' if size_bytes else ''),
-                                                'type': 'video_with_audio',
-                                                'has_audio': True,
-                                                'height': int(fmt),
-                                                'raw': check_resp
-                                            })
-                                            LOG.info(f'YouTube HQ API: Got {fmt}p quality')
-                                            break
-                                    elif check_resp and check_resp.get('status') == 'processing':
-                                        continue  # Retry
-                                    else:
-                                        break  # Failed or other status
-                    except Exception as e:
-                        LOG.warning(f'YouTube HQ API: Failed to get {fmt}p - {e}')
-                        continue
-                
-                if qualities:
-                    # Sort by height descending (best quality first)
-                    qualities.sort(key=lambda q: q['height'], reverse=True)
-                    best_entry = qualities[0]
-                    
-                    safe_title = (title or 'youtube_video').replace(' ', '_')[:80]
-                    inferred_file = f"{safe_title}_{best_entry.get('resolution')}.mp4"
-                    caption = clean_caption(title)
-                    
-                    LOG.info(f'YouTube HQ API: Successfully parsed {len(qualities)} qualities')
-                    return {
-                        'url': best_entry['url'],
-                        'size_bytes': best_entry.get('size_bytes'),
-                        'file_name': inferred_file,
-                        'caption': caption,
-                        'qualities': qualities,
-                        'best_index': 0,
-                        'thumbnail': thumbnail,
-                        'raw_entry': best_entry['raw'],
-                        'raw_data': get_resp
-                    }
-                else:
-                    LOG.warning('YouTube HQ API: No qualities extracted, falling back to legacy')
-            else:
-                LOG.warning('YouTube HQ API: No hash received, falling back to legacy')
-    except Exception as e:
-        LOG.warning(f'YouTube HQ API failed: {e}')
-    
-    # Fallback to legacy API (yt-vid.hazex) which has structured video_with_audio/video_only/audio arrays
-    LOG.info('YouTube: Using legacy API fallback')
+    """Use legacy YouTube API (always works) with inline upload buttons."""
+    # Use legacy API (yt-vid.hazex) which has structured video_with_audio/video_only/audio arrays
+    # Note: HQ API (yt-download.hazex) has 500 errors, so using legacy as primary
+    LOG.info('YouTube: Using legacy API')
     legacy = fetch_json(YOUTUBE_LEGACY_API, params={'url': url})
     if legacy and not legacy.get('error'):
         # Parse legacy API response with video_with_audio, video_only, audio structure
