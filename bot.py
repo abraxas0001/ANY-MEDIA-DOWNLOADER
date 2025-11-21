@@ -1005,10 +1005,7 @@ def handle_api_for_url(url):
         # Collect explicit Instagram media arrays (images/videos) if present
         explicit_items = []
         if isinstance(data, dict):
-            img_list = data.get('images') or (isinstance(data.get('result'), dict) and data['result'].get('images'))
-            vid_list = data.get('videos') or (isinstance(data.get('result'), dict) and data['result'].get('videos'))
             def parse_size(raw_size):
-                # raw_size may be like '159.9 KB' or bytes int; we standardize
                 if raw_size is None:
                     return None, None
                 if isinstance(raw_size, (int, float)):
@@ -1016,7 +1013,6 @@ def handle_api_for_url(url):
                 if isinstance(raw_size, str):
                     s = raw_size.strip()
                     try:
-                        # Extract number and unit
                         import re
                         m = re.match(r'(\d+(?:\.\d+)?)\s*(B|KB|MB|GB|TB)', s, re.I)
                         if m:
@@ -1027,32 +1023,53 @@ def handle_api_for_url(url):
                             return bytes_val, human_size(bytes_val)
                     except Exception:
                         pass
-                    return None, s  # keep original string for display
+                    return None, s
                 return None, None
-            if isinstance(img_list, list):
-                for idx, im in enumerate(img_list, start=1):
-                    if isinstance(im, dict) and im.get('url'):
-                        size_bytes, size_text = parse_size(im.get('size') or im.get('filesize'))
-                        explicit_items.append({
-                            'url': im['url'],
-                            'file_name': os.path.basename(im['url'].split('?')[0]) or f'instagram_image_{idx}.jpg',
-                            'size_bytes': size_bytes,
-                            'size_text': size_text,
-                            'is_image': True,
-                            'is_video': False
-                        })
-            if isinstance(vid_list, list):
-                for idx, vd in enumerate(vid_list, start=1):
-                    if isinstance(vd, dict) and vd.get('url'):
-                        size_bytes, size_text = parse_size(vd.get('size') or vd.get('filesize'))
-                        explicit_items.append({
-                            'url': vd['url'],
-                            'file_name': os.path.basename(vd['url'].split('?')[0]) or f'instagram_video_{idx}.mp4',
-                            'size_bytes': size_bytes,
-                            'size_text': size_text,
-                            'is_image': False,
-                            'is_video': True
-                        })
+            def pick_list(obj, keys):
+                for k in keys:
+                    v = obj.get(k)
+                    if isinstance(v, list) and v:
+                        return v
+                return None
+            srcs = [data]
+            if isinstance(data.get('result'), dict):
+                srcs.append(data['result'])
+            image_keys = ['images','image_list','imageUrls','resources','items','slides']
+            video_keys = ['videos','medias','media_list']
+            idx_counter = 1
+            for src in srcs:
+                imgs = pick_list(src, image_keys)
+                if isinstance(imgs, list):
+                    for im in imgs:
+                        if isinstance(im, dict):
+                            u = im.get('url') or im.get('download_url') or im.get('src') or im.get('image')
+                            if u:
+                                size_bytes, size_text = parse_size(im.get('size') or im.get('filesize'))
+                                explicit_items.append({
+                                    'url': u,
+                                    'file_name': os.path.basename(u.split('?')[0]) or f'instagram_image_{idx_counter}.jpg',
+                                    'size_bytes': size_bytes,
+                                    'size_text': size_text,
+                                    'is_image': True,
+                                    'is_video': False
+                                })
+                                idx_counter += 1
+                vids = pick_list(src, video_keys)
+                if isinstance(vids, list):
+                    for vd in vids:
+                        if isinstance(vd, dict):
+                            u = vd.get('url') or vd.get('download_url') or vd.get('src')
+                            if u:
+                                size_bytes, size_text = parse_size(vd.get('size') or vd.get('filesize'))
+                                explicit_items.append({
+                                    'url': u,
+                                    'file_name': os.path.basename(u.split('?')[0]) or f'instagram_video_{idx_counter}.mp4',
+                                    'size_bytes': size_bytes,
+                                    'size_text': size_text,
+                                    'is_image': False,
+                                    'is_video': True
+                                })
+                                idx_counter += 1
         # If explicit items gathered, attach so downstream album logic can use them
         if explicit_items:
             data.setdefault('result', {})
@@ -1094,12 +1111,14 @@ def handle_api_for_url(url):
                                 size_bytes = None
                             caption = clean_caption(data.get('title') or data.get('file_name') or data.get('filename'))
                             LOG.info(f'✅ Terabox: {api_name} succeeded on attempt {attempt+1}')
+                            # For Terabox, prefer sending a link button; large remote uploads often fail.
                             return {
                                 'url': dl,
                                 'size_bytes': size_bytes,
                                 'file_name': file_name,
                                 'caption': caption,
                                 'button_url': dl,
+                                'no_upload': True,
                                 'raw_entry': {'download_link': data.get('download_link'), 'proxy_url': data.get('proxy_url')},
                                 'raw_data': data
                             }
@@ -1116,7 +1135,9 @@ def handle_api_for_url(url):
                 ytdlp_result = get_terabox_with_ytdlp_fallback(url)
                 if ytdlp_result:
                     LOG.info(f'✅ Terabox: yt-dlp fallback succeeded on attempt {yt_attempt+1}')
-                    return ytdlp_result
+                    if ytdlp_result:
+                        ytdlp_result['no_upload'] = True
+                        return ytdlp_result
             except Exception as e:
                 LOG.warning(f'Terabox yt-dlp attempt {yt_attempt+1} failed: {e}')
                 if yt_attempt == 0:
@@ -1877,20 +1898,23 @@ def handle_message(msg):
         FORMAT_SESSIONS[session_id] = qualities
 
         kb = InlineKeyboardMarkup()
-        # Download best quality button (top priority)
-        kb.add(InlineKeyboardButton("⬇️ Download Now", callback_data=f"ytupload:{session_id}:{best_index}"))
-        # Audio extraction button
+        # Download best quality button (use direct link)
+        try:
+            best_url = qualities[best_index]['url']
+        except Exception:
+            best_url = qualities[0]['url']
+        kb.add(InlineKeyboardButton("⬇️ Download Now", url=best_url))
+        # Audio extraction button (kept as callback)
         kb.add(InlineKeyboardButton("🎵 Extract Audio (MP3)", callback_data=f"ytaudio:{session_id}"))
         
-        # Add inline quality buttons for direct upload (limit to top 8)
+        # Add quality buttons as external links (limit to top 8)
         for i, q in enumerate(qualities[:8]):
             txt = q['resolution'] or q['extension']
             if q.get('size_bytes'):
                 txt += f" {human_size(q['size_bytes'])}"
             if i == best_index:
                 txt += " ⭐"
-            # Use callback_data for inline upload instead of external URL
-            kb.add(InlineKeyboardButton(txt, callback_data=f"ytupload:{session_id}:{i}"))
+            kb.add(InlineKeyboardButton(txt, url=q['url']))
 
         bot.edit_message_text(
             f"<b>✅ Formats Ready</b>\n<b>📝 Title:</b> {title_caption}\n\n<b>🎬 Download Options:</b>\nClick <b>Download Now</b> for best quality or choose a specific quality below. ⭐ marks best quality.\n\n<b>💡 Tip:</b> Use <b>Extract Audio</b> to get MP3.",
@@ -2074,6 +2098,9 @@ def handle_message(msg):
     # Decide if we can attempt an upload (allow when size unknown)
     size_known = size_bytes is not None
     can_upload = (size_bytes is None) or (size_bytes <= MAX_UPLOAD)
+    # Honor no_upload flag (e.g., Terabox reliability or large files)
+    if result.get('no_upload'):
+        can_upload = False
 
     if can_upload:
         # Add Download Now button during upload
