@@ -48,7 +48,8 @@ BOT_BRAND = '@TeraInstaShortsDownloaderbot'
 BACKUP_CHANNEL_ID = os.getenv('BACKUP_CHANNEL_ID', '')
 
 YOUTUBE_LEGACY_API = 'https://yt-vid.hazex.workers.dev/'  # retained for fallback
-YOUTUBE_MULTI_API = 'https://yt-dl.hazex.workers.dev/'
+YOUTUBE_MULTI_API = 'https://yt-dl.hazex.workers.dev/'  # Old multi-step API
+YOUTUBE_HQ_API = 'https://yt-download.hazex.workers.dev/'  # New high-quality API with format selection
 TIKTOK_API = 'https://tiktok-dl.hazex.workers.dev/'
 INSTA_API = 'https://insta-dl.hazex.workers.dev/'
 # Additional Instagram API variants for better reliability
@@ -507,8 +508,76 @@ def get_terabox_with_ytdlp_fallback(url):
 
 
 def process_youtube(url):
-    """Use both legacy and multi-step YouTube APIs with yt-dlp fallback."""
-    # Try legacy API first (yt-vid.hazex) which has structured video_with_audio/video_only/audio arrays
+    """Use new high-quality YouTube API with format selection (360p-1440p), then legacy API, then yt-dlp fallback."""
+    # Try new high-quality API first (supports 360, 480, 720, 1080, 1440)
+    try:
+        # Step 1: Get video info and hash
+        get_resp = fetch_json(YOUTUBE_HQ_API, params={'function': 'get_task', 'url': url})
+        if get_resp and not get_resp.get('error'):
+            video_hash = get_resp.get('hash')
+            title = get_resp.get('title', 'YouTube Video')
+            thumbnail = get_resp.get('thumbnail')
+            
+            if video_hash:
+                # Step 2: Create tasks for different quality formats
+                formats_to_try = ['1440', '1080', '720', '480', '360']  # Try highest first
+                qualities = []
+                
+                for fmt in formats_to_try:
+                    try:
+                        # Create task with specific format
+                        create_resp = fetch_json(YOUTUBE_HQ_API, params={'function': 'create_task', 'hash': video_hash, 'format': fmt})
+                        if create_resp and not create_resp.get('error'):
+                            task_id = create_resp.get('task_id')
+                            if task_id:
+                                # Check task status
+                                time.sleep(0.5)  # Brief wait for task processing
+                                check_resp = fetch_json(YOUTUBE_HQ_API, params={'function': 'check_task', 'task_id': task_id})
+                                if check_resp and check_resp.get('status') == 'completed':
+                                    download_url = check_resp.get('download_url')
+                                    if download_url:
+                                        size_bytes = check_resp.get('file_size')
+                                        qualities.append({
+                                            'url': download_url,
+                                            'extension': 'mp4',
+                                            'resolution': f'{fmt}p',
+                                            'size_bytes': size_bytes,
+                                            'label': f'{fmt}p' + (f' {human_size(size_bytes)}' if size_bytes else ''),
+                                            'type': 'video_with_audio',
+                                            'has_audio': True,
+                                            'height': int(fmt),
+                                            'raw': check_resp
+                                        })
+                                        LOG.info(f'YouTube HQ API: Got {fmt}p quality')
+                    except Exception as e:
+                        LOG.warning(f'YouTube HQ API: Failed to get {fmt}p - {e}')
+                        continue
+                
+                if qualities:
+                    # Sort by height descending (best quality first)
+                    qualities.sort(key=lambda q: q['height'], reverse=True)
+                    best_entry = qualities[0]
+                    
+                    safe_title = (title or 'youtube_video').replace(' ', '_')[:80]
+                    inferred_file = f"{safe_title}_{best_entry.get('resolution')}.mp4"
+                    caption = clean_caption(title)
+                    
+                    LOG.info(f'YouTube HQ API: Successfully parsed {len(qualities)} qualities')
+                    return {
+                        'url': best_entry['url'],
+                        'size_bytes': best_entry.get('size_bytes'),
+                        'file_name': inferred_file,
+                        'caption': caption,
+                        'qualities': qualities,
+                        'best_index': 0,
+                        'thumbnail': thumbnail,
+                        'raw_entry': best_entry['raw'],
+                        'raw_data': get_resp
+                    }
+    except Exception as e:
+        LOG.warning(f'YouTube HQ API failed: {e}')
+    
+    # Fallback to legacy API (yt-vid.hazex) which has structured video_with_audio/video_only/audio arrays
     legacy = fetch_json(YOUTUBE_LEGACY_API, params={'url': url})
     if legacy and not legacy.get('error'):
         # Parse legacy API response with video_with_audio, video_only, audio structure
