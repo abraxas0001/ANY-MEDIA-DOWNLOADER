@@ -469,11 +469,12 @@ def get_terabox_with_ytdlp_fallback(url):
         import yt_dlp
         url_clean = url.split('?')[0]  # Clean URL
         
-        # Configure yt-dlp with retry and timeout settings
+        # Configure yt-dlp with retry and timeout settings + best format selection
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
+            'format': 'best',  # Select best available quality
             'socket_timeout': 30,
             'retries': 3,
             'fragment_retries': 3,
@@ -662,7 +663,11 @@ def process_youtube(url):
         LOG.warning('YouTube APIs failed, using yt-dlp fallback')
         try:
             import yt_dlp
-            ydl_opts = {'quiet': True, 'no_warnings': True}
+            ydl_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Prefer best quality with audio
+            }
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 info = ydl.extract_info(url, download=False)
                 if info:
