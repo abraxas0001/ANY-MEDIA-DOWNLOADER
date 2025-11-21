@@ -207,17 +207,35 @@ def stream_download(url: str, dest_path: Path, max_bytes: int, progress_callback
 
 
 def fetch_json(url, params=None, timeout=30):
-    try:
-        r = requests.get(url, params=params, timeout=timeout)
-        r.raise_for_status()
-        return r.json()
-    except requests.exceptions.HTTPError as e:
-        status_code = e.response.status_code if hasattr(e, 'response') else None
-        LOG.warning('HTTP error %s from %s: %s', status_code, url, str(e))
-        return {'error': str(e), 'status_code': status_code}
-    except Exception as e:
-        LOG.exception('Failed to fetch JSON from %s', url)
-        return {'error': str(e)}
+    """Fetch JSON with retry logic and better error handling."""
+    max_retries = 2
+    for attempt in range(max_retries):
+        try:
+            r = requests.get(url, params=params, timeout=timeout, headers={
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            })
+            r.raise_for_status()
+            return r.json()
+        except requests.exceptions.Timeout:
+            LOG.warning(f'Timeout fetching {url} (attempt {attempt+1}/{max_retries})')
+            if attempt < max_retries - 1:
+                time.sleep(2)  # Wait before retry
+            else:
+                return {'error': 'Request timeout', 'timeout': True}
+        except requests.exceptions.HTTPError as e:
+            status_code = e.response.status_code if hasattr(e, 'response') else None
+            LOG.warning('HTTP error %s from %s: %s', status_code, url, str(e))
+            return {'error': str(e), 'status_code': status_code}
+        except requests.exceptions.ConnectionError as e:
+            LOG.warning(f'Connection error fetching {url} (attempt {attempt+1}/{max_retries}): {e}')
+            if attempt < max_retries - 1:
+                time.sleep(2)
+            else:
+                return {'error': 'Connection failed', 'connection_error': True}
+        except Exception as e:
+            LOG.exception('Failed to fetch JSON from %s', url)
+            return {'error': str(e)}
+    return {'error': 'All retry attempts failed'}
 
 
 def find_download_entries(obj):
@@ -446,31 +464,41 @@ def get_instagram_with_ytdlp_fallback(url):
 
 
 def get_terabox_with_ytdlp_fallback(url):
-    """Try Terabox with yt-dlp as fallback."""
+    """Try Terabox with yt-dlp as fallback - with aggressive retry and timeout config."""
     try:
         import yt_dlp
-        url = url.split('?')[0]  # Clean URL
+        url_clean = url.split('?')[0]  # Clean URL
+        
+        # Configure yt-dlp with retry and timeout settings
         ydl_opts = {
             'quiet': True,
             'no_warnings': True,
             'extract_flat': False,
-            'socket_timeout': 60,
-            'retries': 2
+            'socket_timeout': 30,
+            'retries': 3,
+            'fragment_retries': 3,
+            'skip_unavailable_fragments': True,
+            'http_headers': {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            }
         }
+        
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=False)
+            info = ydl.extract_info(url_clean, download=False)
             if info:
                 dl_url = info.get('url')
                 if dl_url:
                     file_name = info.get('title') or os.path.basename((dl_url or '').split('?')[0]) or 'terabox_file'
                     size_bytes = info.get('filesize') or info.get('filesize_approx')
                     caption = clean_caption(info.get('description') or info.get('title'))
+                    LOG.info('✅ yt-dlp Terabox fallback succeeded')
                     return {
                         'url': dl_url,
                         'size_bytes': int(size_bytes) if size_bytes else None,
                         'file_name': file_name,
                         'caption': caption,
-                        'button_url': dl_url
+                        'button_url': dl_url,
+                        'raw_data': {'source': 'yt-dlp', 'url_clean': url_clean}
                     }
     except Exception as e:
         LOG.warning('yt-dlp Terabox fallback failed: %s', e)
@@ -1023,62 +1051,70 @@ def handle_api_for_url(url):
             if isinstance(data['result'], dict):
                 data['result']['__explicit_items'] = explicit_items
     elif '1024tera' in lower or 'terabox' in lower or '1024' in lower:
-        # Try multiple Terabox APIs with fallback chain
+        # Try multiple Terabox APIs with aggressive fallback chain and retries
         apis_to_try = [
-            ('Noor API', TERA_API + quote_plus(url), 'url', {}),
-            ('SOCIAL_DL API', SOCIAL_DL_API, 'url', {'params': {'url': url}}),
+            ('Noor API', TERA_API + quote_plus(url), {'timeout': 30}),
+            ('SOCIAL_DL API', SOCIAL_DL_API, {'timeout': 30, 'params': {'url': url}}),
         ]
         
-        for api_name, api_url_or_base, url_param, extra_kwargs in apis_to_try:
-            try:
-                LOG.info(f'Trying Terabox with {api_name}...')
-                if 'params' in extra_kwargs:
-                    # For APIs using params
-                    data = fetch_json(api_url_or_base, timeout=60, **extra_kwargs)
-                else:
-                    # For APIs using URL directly
-                    data = fetch_json(api_url_or_base, timeout=60)
-                
-                # Debug log
-                if data:
-                    LOG.info(f'{api_name} response keys: {list(data.keys()) if isinstance(data, dict) else type(data)}')
-                
-                # Process successful API response (skip if error or status_code present)
-                if isinstance(data, dict) and not data.get('error') and not data.get('status_code'):
-                    # Try multiple possible response keys
-                    dl = data.get('proxy_url') or data.get('download_link') or data.get('url') or data.get('directUrl')
-                    if dl:
-                        file_name = data.get('file_name') or data.get('filename') or data.get('title') or os.path.basename((dl or '').split('?')[0]) or 'terabox_file'
-                        size_bytes = None
-                        try:
-                            if data.get('size_bytes') is not None:
-                                size_bytes = int(data.get('size_bytes'))
-                            elif data.get('size') is not None:
-                                size_bytes = int(data.get('size'))
-                        except Exception:
+        for api_name, api_url_or_base, kwargs in apis_to_try:
+            for attempt in range(2):  # 2 attempts per API
+                try:
+                    LOG.info(f'Terabox: Attempt {attempt+1} with {api_name}...')
+                    
+                    if 'params' in kwargs:
+                        data = fetch_json(api_url_or_base, **kwargs)
+                    else:
+                        data = fetch_json(api_url_or_base, **kwargs)
+                    
+                    if data:
+                        LOG.info(f'{api_name} response keys: {list(data.keys()) if isinstance(data, dict) else type(data)}')
+                    
+                    # Process successful API response (skip if error or status_code present)
+                    if isinstance(data, dict) and not data.get('error') and not data.get('status_code'):
+                        # Try multiple possible response keys
+                        dl = data.get('proxy_url') or data.get('download_link') or data.get('url') or data.get('directUrl')
+                        if dl:
+                            file_name = data.get('file_name') or data.get('filename') or data.get('title') or os.path.basename((dl or '').split('?')[0]) or 'terabox_file'
                             size_bytes = None
-                        caption = clean_caption(data.get('title') or data.get('file_name') or data.get('filename'))
-                        LOG.info(f'Terabox: {api_name} succeeded')
-                        return {
-                            'url': dl,
-                            'size_bytes': size_bytes,
-                            'file_name': file_name,
-                            'caption': caption,
-                            'button_url': dl,
-                            'raw_entry': {'download_link': data.get('download_link'), 'proxy_url': data.get('proxy_url')},
-                            'raw_data': data
-                        }
-            except Exception as e:
-                LOG.warning(f'{api_name} failed: {e}')
-                continue
+                            try:
+                                if data.get('size_bytes') is not None:
+                                    size_bytes = int(data.get('size_bytes'))
+                                elif data.get('size') is not None:
+                                    size_bytes = int(data.get('size'))
+                            except Exception:
+                                size_bytes = None
+                            caption = clean_caption(data.get('title') or data.get('file_name') or data.get('filename'))
+                            LOG.info(f'✅ Terabox: {api_name} succeeded on attempt {attempt+1}')
+                            return {
+                                'url': dl,
+                                'size_bytes': size_bytes,
+                                'file_name': file_name,
+                                'caption': caption,
+                                'button_url': dl,
+                                'raw_entry': {'download_link': data.get('download_link'), 'proxy_url': data.get('proxy_url')},
+                                'raw_data': data
+                            }
+                except Exception as e:
+                    LOG.warning(f'Terabox {api_name} attempt {attempt+1} failed: {e}')
+                    if attempt == 0:
+                        time.sleep(1)  # Wait before retry
+                    continue
         
-        # Try yt-dlp as final fallback
-        LOG.info('Trying yt-dlp as final fallback for Terabox...')
-        ytdlp_result = get_terabox_with_ytdlp_fallback(url)
-        if ytdlp_result:
-            LOG.info('yt-dlp fallback succeeded for Terabox')
-            return ytdlp_result
-        return {'error': 'Terabox: All APIs failed. The link may be invalid or service temporarily unavailable.'}
+        # Try yt-dlp as final fallback (3rd attempt)
+        LOG.info('Terabox: Trying yt-dlp as final fallback...')
+        for yt_attempt in range(2):
+            try:
+                ytdlp_result = get_terabox_with_ytdlp_fallback(url)
+                if ytdlp_result:
+                    LOG.info(f'✅ Terabox: yt-dlp fallback succeeded on attempt {yt_attempt+1}')
+                    return ytdlp_result
+            except Exception as e:
+                LOG.warning(f'Terabox yt-dlp attempt {yt_attempt+1} failed: {e}')
+                if yt_attempt == 0:
+                    time.sleep(1)
+        
+        return {'error': 'Terabox: All APIs failed. The link may be invalid, expired, or service temporarily unavailable. Try again shortly.'}
     else:
         # Primary generic multi-platform fallback
         data = fetch_json(SOCIAL_DL_API, params={'url': url})
