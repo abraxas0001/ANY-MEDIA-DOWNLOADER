@@ -20,7 +20,7 @@ except Exception:
 
 try:
     from dotenv import load_dotenv
-    load_dotenv()
+    load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), '.env'), override=True)
 except ImportError:
     pass  # python-dotenv is optional
 
@@ -43,6 +43,9 @@ bot = telebot.TeleBot(TOKEN, parse_mode='HTML')
 
 # Bot brand username for consistent signature
 BOT_BRAND = '@TeraInstaShortsDownloaderbot'
+
+# Backup channel for archival (optional)
+BACKUP_CHANNEL_ID = os.getenv('BACKUP_CHANNEL_ID', '')
 
 YOUTUBE_LEGACY_API = 'https://yt-vid.hazex.workers.dev/'  # retained for fallback
 YOUTUBE_MULTI_API = 'https://yt-dl.hazex.workers.dev/'
@@ -151,8 +154,24 @@ def ensure_ffmpeg() -> str | None:
 
 
 def forward_to_backup_channel(chat_id, file_id, media_type, caption, username):
-    """Forward downloaded media to backup channel for archival (disabled in Railway)."""
-    return
+    """Forward downloaded media to backup channel for archival (optional feature)."""
+    if not BACKUP_CHANNEL_ID:
+        return
+    try:
+        backup_caption = f"📥 {caption}\n👤 User: @{username}\n🆔 Chat ID: {chat_id}"
+        
+        if media_type == 'video':
+            bot.send_video(BACKUP_CHANNEL_ID, file_id, caption=backup_caption)
+        elif media_type == 'photo':
+            bot.send_photo(BACKUP_CHANNEL_ID, file_id, caption=backup_caption)
+        elif media_type == 'audio':
+            bot.send_audio(BACKUP_CHANNEL_ID, file_id, caption=backup_caption)
+        else:
+            bot.send_document(BACKUP_CHANNEL_ID, file_id, caption=backup_caption)
+        
+        LOG.info('Media forwarded to backup channel: %s', file_id)
+    except Exception as e:
+        LOG.warning('Failed to forward to backup channel: %s', e)
 
 
 def stream_download(url: str, dest_path: Path, max_bytes: int, progress_callback=None) -> bool:
