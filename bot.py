@@ -1898,16 +1898,11 @@ def handle_message(msg):
         FORMAT_SESSIONS[session_id] = qualities
 
         kb = InlineKeyboardMarkup()
-        # Download best quality button (use direct link)
-        try:
-            best_url = qualities[best_index]['url']
-        except Exception:
-            best_url = qualities[0]['url']
-        kb.add(InlineKeyboardButton("⬇️ Download Now", url=best_url))
-        # Audio extraction button (kept as callback)
+        # Download best quality button (renamed from Upload Best Video) - at top
+        kb.add(InlineKeyboardButton("⬇️ Download Now", callback_data=f"ytupload:{session_id}:{best_index}"))
+        # Audio extraction button
         kb.add(InlineKeyboardButton("🎵 Extract Audio (MP3)", callback_data=f"ytaudio:{session_id}"))
-        
-        # Add quality buttons as external links (limit to top 8)
+        # Add quality buttons (limit to top 8 to avoid markup being too long)
         for i, q in enumerate(qualities[:8]):
             txt = q['resolution'] or q['extension']
             if q.get('size_bytes'):
