@@ -61,7 +61,7 @@ TERA_API = 'https://my-noor-queen-api.woodmirror.workers.dev/api?url='
 URL_RE = re.compile(r'(https?://[^\s]+)')
 
 # Configurable limits
-MAX_UPLOAD = int(os.getenv('MAX_UPLOAD_MB', '50')) * 1024 * 1024  # default 50MB
+MAX_UPLOAD = int(os.getenv('MAX_UPLOAD_MB', '2048')) * 1024 * 1024  # default 2GB
 LOCAL_DOWNLOAD_LIMIT = MAX_UPLOAD  # do not locally download more than upload limit
 DOWNLOAD_TIMEOUT = 120  # seconds
 
@@ -1360,7 +1360,7 @@ def cmd_help(msg):
 <b>Step 2:</b> Paste and send the URL to me
 
 <b>Step 3:</b> Receive your file!
-  • Files under 50MB → Sent directly
+  • Files under 2GB → Sent directly
   • Larger files → Download link provided
 
 <b>⚙️ Features:</b>
@@ -1407,7 +1407,7 @@ Download media from multiple platforms instantly!
 
 <b>📊 Statistics:</b>
   • Platforms supported: 4+
-  • File size limit: 50MB direct upload
+  • File size limit: 2GB direct upload
   • Processing time: ~5-10 seconds
 
 <b>🔐 Privacy:</b>

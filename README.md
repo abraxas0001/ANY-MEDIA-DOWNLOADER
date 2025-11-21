@@ -60,8 +60,8 @@ INFO:__main__:Starting bot
    - Instagram: `https://instagram.com/reel/...`
    - Terabox: `https://1024terabox.com/s/...`
 4. The bot will:
-   - Send the file directly (if ≤ 50 MB)
-   - Send a download link (if > 50 MB)
+   - Send the file directly (if ≤ 2 GB)
+   - Send a download link (if > 2 GB)
 
 ## 🎯 Bot Commands
 
@@ -114,7 +114,7 @@ The bot reads configuration from environment variables:
 
 ## Technical Details
 
-- **File size limit**: 50 MB (Telegram bot API limit for direct uploads)
+- **File size limit**: 2 GB (Telegram bot API limit for direct uploads)
 - **Timeout**: 30 seconds per API request
 - **Polling mode**: Long polling with 60-second timeout
 - **Error handling**: Automatic fallback to link sharing if upload fails
@@ -150,7 +150,7 @@ Potential enhancements you can add:
 
 **File too large:**
 - Bot will send a direct download link instead
-- Consider implementing chunked uploads for 50-200 MB files
+- Consider implementing chunked uploads for files over 2 GB
 
 ## License
 
