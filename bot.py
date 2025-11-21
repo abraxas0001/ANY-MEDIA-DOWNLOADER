@@ -1356,8 +1356,8 @@ def cmd_start(msg):
   3️⃣ Get your file instantly!
 
 <b>💡 Example:</b>
-    <code>https://youtube.com/watch?v=...</code>
-    <code>https://vt.tiktok.com/...</code>
+  <code>https://youtube.com/watch?v=...</code>
+  <code>https://vt.tiktok.com/...</code>
   <code>https://instagram.com/reel/...</code>
   <code>https://1024terabox.com/s/...</code>
 
