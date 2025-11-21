@@ -10,7 +10,20 @@ All API handlers have been tested and verified working for:
 - ✅ Terabox/1024terabox links
 - ✅ Generic social media URLs (fallback)
 
-## 🚀 Quick Start (Windows PowerShell)
+## 🌐 Railway Deployment
+
+**Quick Deploy (1 min):**
+
+1. Push this repo to GitHub
+2. Go to [Railway.app](https://railway.app)
+3. Create new project → Import from GitHub
+4. Add environment variable:
+   ```
+   TELEGRAM_TOKEN=your_bot_token_here
+   ```
+5. Deploy!
+
+The bot auto-installs FFmpeg on first run for video-only merging.
 
 **1. Install dependencies:**
 ```powershell

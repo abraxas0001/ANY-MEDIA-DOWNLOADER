@@ -39,9 +39,6 @@ if not TOKEN:
         '   Or set environment variable: $env:TELEGRAM_TOKEN="your_token"'
     )
 
-# Backup channel for storing all downloaded media
-BACKUP_CHANNEL_ID = os.getenv('BACKUP_CHANNEL_ID', '-1003011765051')
-
 bot = telebot.TeleBot(TOKEN, parse_mode='HTML')
 
 # Bot brand username for consistent signature
@@ -70,11 +67,8 @@ DOWNLOAD_PROGRESS = {}  # {chat_id: {'msg_id': int, 'percent': float}}
 
 
 def check_aria2c_available() -> bool:
-    """Check if aria2c is available locally or in PATH"""
-    local_aria2c = os.path.join(os.path.dirname(__file__), "aria2c.exe")
-    if os.path.exists(local_aria2c):
-        return True
-    return shutil.which("aria2c") is not None
+    """Check if aria2c is available locally or in PATH (unused for Railway)."""
+    return False
 
 
 def ensure_ffmpeg() -> str | None:
@@ -157,24 +151,8 @@ def ensure_ffmpeg() -> str | None:
 
 
 def forward_to_backup_channel(chat_id, file_id, media_type, caption, username):
-    """Forward downloaded media to backup channel for archival"""
-    if not BACKUP_CHANNEL_ID:
-        return
-    try:
-        backup_caption = f"📥 {caption}\n👤 User: @{username}\n🆔 Chat ID: {chat_id}"
-        
-        if media_type == 'video':
-            bot.send_video(BACKUP_CHANNEL_ID, file_id, caption=backup_caption)
-        elif media_type == 'photo':
-            bot.send_photo(BACKUP_CHANNEL_ID, file_id, caption=backup_caption)
-        elif media_type == 'audio':
-            bot.send_audio(BACKUP_CHANNEL_ID, file_id, caption=backup_caption)
-        else:
-            bot.send_document(BACKUP_CHANNEL_ID, file_id, caption=backup_caption)
-        
-        LOG.info('Media forwarded to backup channel: %s', file_id)
-    except Exception as e:
-        LOG.warning('Failed to forward to backup channel: %s', e)
+    """Forward downloaded media to backup channel for archival (disabled in Railway)."""
+    return
 
 
 def stream_download(url: str, dest_path: Path, max_bytes: int, progress_callback=None) -> bool:
