@@ -1329,10 +1329,10 @@ def handle_api_for_url(url):
 def cmd_start(msg):
     welcome_art = """
 ╔═══════════════════════════════════════╗
-║      🎬 <b>MEDIA DOWNLOADER BOT</b> 🎬       ║
+║                🎬 <b>POCKET DOWNLOADER BOT</b> 🎬       ║
 ╚═══════════════════════════════════════╝
 
-<b>Welcome to your personal media downloader!</b>
+<b>Welcome to your personal pocket downloader!</b>
 
 <b>📥 Supported Platforms:</b>
     • 🎥 YouTube Videos & Shorts
@@ -1419,7 +1419,7 @@ def cmd_about(msg):
     about_text = """
 <b>🤖 ABOUT THIS BOT</b>
 
-<b>Name:</b> Media Downloader Bot
+<b>Name:</b> POCKET DOWNLOADER Bot
 <b>Version:</b> 1.0.0
 <b>Status:</b> ✅ Online
 
