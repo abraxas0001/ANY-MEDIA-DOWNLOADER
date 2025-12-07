@@ -42,7 +42,7 @@ if not TOKEN:
 bot = telebot.TeleBot(TOKEN, parse_mode='HTML')
 
 # Bot brand username for consistent signature
-BOT_BRAND = '@TeraInstaShortsDownloaderbot'
+BOT_BRAND = 'Pocket Downloader Bot'
 
 # Backup channel for archival (optional)
 BACKUP_CHANNEL_ID = os.getenv('BACKUP_CHANNEL_ID', '')
@@ -1525,7 +1525,7 @@ def handle_yt_upload_callback(call):
         fname = f"video_{best.get('resolution', 'best')}.mp4"
         size_bytes = best.get('size_bytes')
         base_caption = f"<b>✅ YouTube Video</b>\n<b>Quality:</b> {best.get('resolution') or best.get('extension')}"
-        caption = base_caption + "\n\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>"
+        caption = base_caption + "\n\n<i>💜 <a href=\"https://t.me/TeraInstaShortsDownloaderbot\">Pocket Downloader Bot</a></i>"
 
         # If selected format is video_only, attempt mux with best available audio
         if best.get('type') == 'video_only':
@@ -1558,7 +1558,7 @@ def handle_yt_upload_callback(call):
                                 except Exception:
                                     pass
                                 if out_path.exists():
-                                    caption = base_caption + f"\n<b>Audio merged:</b> {audio_best.get('extension').upper()}" + "\n\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>"
+                                    caption = base_caption + f"\n<b>Audio merged:</b> {audio_best.get('extension').upper()}" + "\n\n<i>💜 <a href=\"https://t.me/TeraInstaShortsDownloaderbot\">Pocket Downloader Bot</a></i>"
                                     with open(out_path, 'rb') as f:
                                         bot.send_video(chat_id, f, caption=caption, supports_streaming=True)
                                     bot.delete_message(chat_id, call.message.message_id)
@@ -1686,7 +1686,7 @@ def handle_yt_audio_callback(call):
                         audio_files = list(Path(tmpdir).glob('*.*'))
                         if audio_files:
                             audio_path = audio_files[0]
-                            caption = f"<b>🎵 YouTube Audio</b>\n<b>Title:</b> {title}\n\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>"
+                            caption = f"<b>🎵 YouTube Audio</b>\n<b>Title:</b> {title}\n\n<i>💜 <a href=\"https://t.me/TeraInstaShortsDownloaderbot\">Pocket Downloader Bot</a></i>"
                             
                             # Send as audio
                             with open(audio_path, 'rb') as f:
@@ -1726,7 +1726,7 @@ def handle_yt_audio_callback(call):
                         mp3_files = list(Path(tmpdir).glob('*.mp3'))
                         if mp3_files:
                             mp3_path = mp3_files[0]
-                            caption = f"<b>🎵 YouTube Audio (MP3)</b>\n<b>Title:</b> {title}\n\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>"
+                            caption = f"<b>🎵 YouTube Audio (MP3)</b>\n<b>Title:</b> {title}\n\n<i>💜 <a href=\"https://t.me/TeraInstaShortsDownloaderbot\">Pocket Downloader Bot</a></i>"
                             
                             # Send as audio
                             with open(mp3_path, 'rb') as f:
@@ -1784,7 +1784,7 @@ def handle_yt_audio_callback(call):
                             audio_files = list(Path(tmpdir).glob('*.*'))
                             if audio_files:
                                 audio_path = audio_files[0]
-                                caption = f"<b>🎵 YouTube Audio</b>\n<b>Title:</b> {title}\n\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>"
+                                caption = f"<b>🎵 YouTube Audio</b>\n<b>Title:</b> {title}\n\n<i>💜 <a href=\"https://t.me/TeraInstaShortsDownloaderbot\">Pocket Downloader Bot</a></i>"
                                 
                                 with open(audio_path, 'rb') as f:
                                     bot.send_audio(
@@ -1938,9 +1938,9 @@ def handle_message(msg):
         # Prepare caption for the album (multi-item only reaches here)
         main_caption = None
         if original_caption:
-            main_caption = f"<b>📝</b> {original_caption}\n\n<i>📸 Album ({len(items)} items)</i>\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>"
+            main_caption = f"<b>📝</b> {original_caption}\n\n<i>📸 Album ({len(items)} items)</i>\n<i>💜 <a href=\"https://t.me/TeraInstaShortsDownloaderbot\">Pocket Downloader Bot</a></i>"
         else:
-            main_caption = f"<b>📸 Album ({len(items)} items)</b>\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>"
+            main_caption = f"<b>📸 Album ({len(items)} items)</b>\n<i>💜 <a href=\"https://t.me/TeraInstaShortsDownloaderbot\">Pocket Downloader Bot</a></i>"
 
         try:
             bot.delete_message(chat_id, processing_msg.message_id)
@@ -2060,7 +2060,7 @@ def handle_message(msg):
 
     if size_display:
         caption_lines.append(f"<b>📊 Size:</b> {size_display}")
-    caption_lines.append(f"\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>")
+    caption_lines.append(f"\n<i>💜 <a href=\"https://t.me/TeraInstaShortsDownloaderbot\">Pocket Downloader Bot</a></i>")
     caption = '\n'.join(caption_lines)
 
     # Detect if it's a video/image file
