@@ -1938,9 +1938,9 @@ def handle_message(msg):
         # Prepare caption for the album (multi-item only reaches here)
         main_caption = None
         if original_caption:
-            main_caption = f"<b>📝</b> {original_caption}\n\n<i>📸 Album ({len(items)} items)</i>\n<i>Downloaded by {BOT_BRAND}</i>"
+            main_caption = f"<b>📝</b> {original_caption}\n\n<i>📸 Album ({len(items)} items)</i>\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>"
         else:
-            main_caption = f"<b>📸 Album ({len(items)} items)</b>\n<i>Downloaded by {BOT_BRAND}</i>"
+            main_caption = f"<b>📸 Album ({len(items)} items)</b>\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>"
 
         try:
             bot.delete_message(chat_id, processing_msg.message_id)
@@ -2060,7 +2060,7 @@ def handle_message(msg):
 
     if size_display:
         caption_lines.append(f"<b>📊 Size:</b> {size_display}")
-    caption_lines.append(f"\n<i>Downloaded by {BOT_BRAND}</i>")
+    caption_lines.append(f"\n<i>• 💜 @TeraInstaShortsDownloaderbot</i>")
     caption = '\n'.join(caption_lines)
 
     # Detect if it's a video/image file
