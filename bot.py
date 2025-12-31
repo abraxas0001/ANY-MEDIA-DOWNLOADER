@@ -2230,12 +2230,10 @@ if __name__ == '__main__':
                     print("❌ Max retries reached. Exiting.", flush=True)
                     raise e
 
-        print("🔄 Entering polling loop with DEBUG logging...", flush=True)
-        # Enable detailed logging
-        telebot.logger.setLevel(logging.DEBUG)
+        print("🔄 Entering polling loop...", flush=True)
         
         # Reduced arguments to avoid timeouts/conflicts
-        bot.infinity_polling(timeout=20, long_polling_timeout=20, logger_level=logging.DEBUG, allowed_updates=['message', 'callback_query'])
+        bot.infinity_polling(timeout=20, long_polling_timeout=20, logger_level=logging.INFO, allowed_updates=['message', 'callback_query'])
     except Exception as e:
         LOG.critical(f'Bot crashed: {e}')
         print(f"❌ CRITICAL ERROR: {e}", flush=True)
