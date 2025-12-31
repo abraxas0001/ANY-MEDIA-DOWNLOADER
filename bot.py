@@ -1,4 +1,5 @@
 import os
+print("🚀 Process started! Initializing imports...", flush=True)
 import re
 import requests
 import logging
