@@ -2238,5 +2238,15 @@ if __name__ == '__main__':
         # Reduced arguments to avoid timeouts/conflicts
         bot.infinity_polling(timeout=20, long_polling_timeout=20, logger_level=logging.INFO, allowed_updates=['message', 'callback_query'])
     except Exception as e:
+        # Graceful exit for duplicate instances
+        if "409" in str(e):
+            print("\n❌ CRITICAL: DUPLICATE INSTANCE DETECTED (Error 409)", flush=True)
+            print("   The bot is already running somewhere else (Local PC? Another Railway deployment?).", flush=True)
+            print("   Telegram only allows ONE instance per token.", flush=True)
+            print("   ACTION REQUIRED: Kill the other instance or revoke the token.\n", flush=True)
+            # Do not retry, just exit to prevent spamming
+            import sys
+            sys.exit(0)
+        
         LOG.critical(f'Bot crashed: {e}')
         print(f"❌ CRITICAL ERROR: {e}", flush=True)
