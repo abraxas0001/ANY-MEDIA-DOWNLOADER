@@ -2206,19 +2206,29 @@ if __name__ == '__main__':
             import sys
             sys.exit(1)
 
-        # Remove any existing webhook and drop pending updates to start fresh
-        print("🧹 Clearing pending updates...", flush=True)
-        bot.delete_webhook(drop_pending_updates=True)
-        time.sleep(1)
-        print("✅ Webhook removed & updates dropped.", flush=True)
+        # Retry loop for startup connection
+        max_retries = 5
+        for attempt in range(max_retries):
+            try:
+                # Remove any existing webhook and drop pending updates to start fresh
+                print(f"🧹 Clearing pending updates (Attempt {attempt+1}/{max_retries})...", flush=True)
+                bot.delete_webhook(drop_pending_updates=True)
+                time.sleep(1)
+                print("✅ Webhook removed & updates dropped.", flush=True)
 
-        # Identity check
-        try:
-            me = bot.get_me()
-            print(f"✅ Logged in as @{me.username} (ID: {me.id})", flush=True)
-        except Exception as e:
-            print(f"❌ Error getting bot info: {e}", flush=True)
-            raise
+                # Identity check
+                me = bot.get_me()
+                print(f"✅ Logged in as @{me.username} (ID: {me.id})", flush=True)
+                break  # Connection successful
+            except Exception as e:
+                print(f"⚠️ Connection failed (Attempt {attempt+1}/{max_retries}): {e}", flush=True)
+                if attempt < max_retries - 1:
+                    wait_time = 2 * (attempt + 1)
+                    print(f"🔄 Retrying in {wait_time} seconds...", flush=True)
+                    time.sleep(wait_time)
+                else:
+                    print("❌ Max retries reached. Exiting.", flush=True)
+                    raise e
 
         print("🔄 Entering polling loop with DEBUG logging...", flush=True)
         # Enable detailed logging
