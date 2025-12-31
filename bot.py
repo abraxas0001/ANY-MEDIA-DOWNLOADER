@@ -2207,7 +2207,7 @@ if __name__ == '__main__':
             sys.exit(1)
 
         # Retry loop for startup connection
-        max_retries = 5
+        max_retries = 15
         for attempt in range(max_retries):
             try:
                 # Remove any existing webhook and drop pending updates to start fresh
@@ -2221,13 +2221,16 @@ if __name__ == '__main__':
                 print(f"✅ Logged in as @{me.username} (ID: {me.id})", flush=True)
                 break  # Connection successful
             except Exception as e:
-                print(f"⚠️ Connection failed (Attempt {attempt+1}/{max_retries}): {e}", flush=True)
+                # Print clean error message for user readability
+                print(f"⚠️ Connection not ready (Attempt {attempt+1}/{max_retries}) - Waiting for network...", flush=True)
+                
                 if attempt < max_retries - 1:
-                    wait_time = 2 * (attempt + 1)
-                    print(f"🔄 Retrying in {wait_time} seconds...", flush=True)
+                    wait_time = 2  # Fixed wait time of 2s is usually enough for cold starts
                     time.sleep(wait_time)
                 else:
-                    print("❌ Max retries reached. Exiting.", flush=True)
+                    print("❌ Network failed after multiple attempts.", flush=True)
+                    # Only print full error on final crash
+                    print(f"Error details: {e}", flush=True)
                     raise e
 
         print("🔄 Entering polling loop...", flush=True)
