@@ -2197,56 +2197,62 @@ def handle_message(msg):
 
 
 if __name__ == '__main__':
+    print("🚀 Process started! Initializing imports...", flush=True)
     LOG.info('Starting bot...')
     print("🤖 Bot is starting...", flush=True)
-    try:
-        # Remove any existing webhook to force polling mode
-        if not TOKEN:
-            print("❌ Error: TELEGRAM_TOKEN is missing!", flush=True)
-            import sys
-            sys.exit(1)
 
-        # Retry loop for startup connection
-        max_retries = 15
-        for attempt in range(max_retries):
-            try:
-                # Remove any existing webhook and drop pending updates to start fresh
-                print(f"🧹 Clearing pending updates (Attempt {attempt+1}/{max_retries})...", flush=True)
-                bot.delete_webhook(drop_pending_updates=True)
-                time.sleep(1)
-                print("✅ Webhook removed & updates dropped.", flush=True)
+    # SUPERVISOR LOOP: Keeps the bot running despite network crashes
+    while True:
+        try:
+            # Remove any existing webhook to force polling mode
+            if not TOKEN:
+                print("❌ Error: TELEGRAM_TOKEN is missing!", flush=True)
+                import sys
+                sys.exit(1)
 
-                # Identity check
-                me = bot.get_me()
-                print(f"✅ Logged in as @{me.username} (ID: {me.id})", flush=True)
-                break  # Connection successful
-            except Exception as e:
-                # Print clean error message for user readability
-                print(f"⚠️ Connection not ready (Attempt {attempt+1}/{max_retries}) - Waiting for network...", flush=True)
-                
-                if attempt < max_retries - 1:
-                    wait_time = 2  # Fixed wait time of 2s is usually enough for cold starts
-                    time.sleep(wait_time)
-                else:
-                    print("❌ Network failed after multiple attempts.", flush=True)
-                    # Only print full error on final crash
-                    print(f"Error details: {e}", flush=True)
-                    raise e
+            # Retry loop for startup connection
+            max_retries = 15
+            for attempt in range(max_retries):
+                try:
+                    # Remove any existing webhook and drop pending updates to start fresh
+                    # Only do this on the first loop or if restarting after a long time
+                    print(f"🧹 Clearing pending updates (Attempt {attempt+1}/{max_retries})...", flush=True)
+                    bot.delete_webhook(drop_pending_updates=True)
+                    time.sleep(1)
+                    print("✅ Webhook removed & updates dropped.", flush=True)
 
-        print("🔄 Entering polling loop...", flush=True)
+                    # Identity check
+                    me = bot.get_me()
+                    print(f"✅ Logged in as @{me.username} (ID: {me.id})", flush=True)
+                    break  # Connection successful
+                except Exception as e:
+                    # Print clean error message for user readability
+                    print(f"⚠️ Connection not ready (Attempt {attempt+1}/{max_retries}) - Waiting for network...", flush=True)
+                    
+                    if attempt < max_retries - 1:
+                        wait_time = 2  # Fixed wait time of 2s is usually enough for cold starts
+                        time.sleep(wait_time)
+                    else:
+                        print("❌ Network failed after multiple attempts. Restarting supervisor loop...", flush=True)
+                        raise e
+
+            print("🔄 Entering polling loop...", flush=True)
+            
+            # Reduced arguments to avoid timeouts/conflicts
+            bot.infinity_polling(timeout=20, long_polling_timeout=20, logger_level=logging.INFO, allowed_updates=['message', 'callback_query'])
         
-        # Reduced arguments to avoid timeouts/conflicts
-        bot.infinity_polling(timeout=20, long_polling_timeout=20, logger_level=logging.INFO, allowed_updates=['message', 'callback_query'])
-    except Exception as e:
-        # Graceful exit for duplicate instances
-        if "409" in str(e):
-            print("\n❌ CRITICAL: DUPLICATE INSTANCE DETECTED (Error 409)", flush=True)
-            print("   The bot is already running somewhere else (Local PC? Another Railway deployment?).", flush=True)
-            print("   Telegram only allows ONE instance per token.", flush=True)
-            print("   ACTION REQUIRED: Kill the other instance or revoke the token.\n", flush=True)
-            # Do not retry, just exit to prevent spamming
-            import sys
-            sys.exit(0)
-        
-        LOG.critical(f'Bot crashed: {e}')
-        print(f"❌ CRITICAL ERROR: {e}", flush=True)
+        except Exception as e:
+            # Graceful exit for duplicate instances
+            if "409" in str(e):
+                print("\n❌ CRITICAL: DUPLICATE INSTANCE DETECTED (Error 409)", flush=True)
+                print("   The bot is already running somewhere else (Local PC? Another Railway deployment?).", flush=True)
+                print("   Telegram only allows ONE instance per token.", flush=True)
+                print("   ACTION REQUIRED: Kill the other instance or revoke the token.\n", flush=True)
+                import sys
+                sys.exit(0)
+            
+            # For other errors (Network, etc), just sleep and restart
+            LOG.error(f'Bot crashed: {e}')
+            print(f"⚠️ Bot crashed (Network issue?): {e}", flush=True)
+            print("🔄 Restarting in 5 seconds...", flush=True)
+            time.sleep(5)
