@@ -1328,6 +1328,7 @@ def handle_api_for_url(url):
 
 @bot.message_handler(commands=['start'])
 def cmd_start(msg):
+    print(f"📩 Received /start command from {msg.from_user.id}", flush=True)
     welcome_art = """
 ╔═══════════════════════════════════════╗
 ║                    🎬 <b>POCKET DOWNLOADER BOT</b> 🎬                     ║
@@ -2196,5 +2197,14 @@ def handle_message(msg):
 
 
 if __name__ == '__main__':
-    LOG.info('Starting bot')
-    bot.infinity_polling(timeout=60, long_polling_timeout=60)
+    LOG.info('Starting bot...')
+    print("🤖 Bot is starting...", flush=True)
+    try:
+        # Remove any existing webhook to force polling mode
+        bot.remove_webhook()
+        time.sleep(1)
+        print("✅ Webhook removed, entering polling loop...", flush=True)
+        bot.infinity_polling(timeout=60, long_polling_timeout=60, logger_level=logging.INFO)
+    except Exception as e:
+        LOG.critical(f'Bot crashed: {e}')
+        print(f"❌ CRITICAL ERROR: {e}", flush=True)
