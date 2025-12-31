@@ -25,10 +25,12 @@ try:
 except ImportError:
     pass  # python-dotenv is optional
 
+import sys
 LOG = logging.getLogger(__name__)
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.StreamHandler(sys.stdout)]
 )
 
 # Read token from .env file or environment variable
