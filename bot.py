@@ -2206,9 +2206,11 @@ if __name__ == '__main__':
             import sys
             sys.exit(1)
 
-        bot.remove_webhook()
+        # Remove any existing webhook and drop pending updates to start fresh
+        print("🧹 Clearing pending updates...", flush=True)
+        bot.delete_webhook(drop_pending_updates=True)
         time.sleep(1)
-        print("✅ Webhook removed.", flush=True)
+        print("✅ Webhook removed & updates dropped.", flush=True)
 
         # Identity check
         try:
@@ -2222,7 +2224,8 @@ if __name__ == '__main__':
         # Enable detailed logging
         telebot.logger.setLevel(logging.DEBUG)
         
-        bot.infinity_polling(timeout=60, long_polling_timeout=60, logger_level=logging.DEBUG)
+        # Reduced arguments to avoid timeouts/conflicts
+        bot.infinity_polling(timeout=20, long_polling_timeout=20, logger_level=logging.DEBUG, allowed_updates=['message', 'callback_query'])
     except Exception as e:
         LOG.critical(f'Bot crashed: {e}')
         print(f"❌ CRITICAL ERROR: {e}", flush=True)
