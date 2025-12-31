@@ -2203,7 +2203,8 @@ if __name__ == '__main__':
         # Remove any existing webhook to force polling mode
         if not TOKEN:
             print("❌ Error: TELEGRAM_TOKEN is missing!", flush=True)
-            return
+            import sys
+            sys.exit(1)
 
         bot.remove_webhook()
         time.sleep(1)
