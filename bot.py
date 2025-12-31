@@ -1335,7 +1335,7 @@ def cmd_start(msg):
 
 <b>Welcome to your personal pocket downloader!</b>
 
-<b>📥 Supported Platforms:</b>
+<blockquote expandable><b>📥 Supported Platforms:</b>
     • 🎥 YouTube Videos & Shorts
     • 🎵 TikTok (No-Watermark, Audio)
     • 📸 Instagram Reels & Posts
@@ -1349,14 +1349,14 @@ def cmd_start(msg):
     • 🖼️ Direct inline media display
     • 💾 Automatic backup archival
     • ⚡ Fast downloads with yt-dlp fallback
-    • 🔧 Smart caption extraction
+    • 🔧 Smart caption extraction</blockquote>
 
 <b>🚀 How to Use:</b>
   1️⃣ Copy any media URL
   2️⃣ Send it to me
   3️⃣ Get your file instantly!
 
-<b>💡 Example:</b>
+<blockquote expandable><b>💡 Example:</b>
   <code>https://youtube.com/watch?v=...</code>
   <code>https://vt.tiktok.com/...</code>
   <code>https://instagram.com/reel/...</code>
@@ -1366,7 +1366,7 @@ def cmd_start(msg):
   /start - Show this message
   /help - Get detailed help
   /about - About this bot
-  /supported - List all platforms
+  /supported - List all platforms</blockquote>
 
 <i>✨ Just send me a link and watch the magic happen!</i>
 """
@@ -1390,7 +1390,7 @@ def cmd_help(msg):
     • Files under 50MB → Sent directly
   • Larger files → Download link provided
 
-<b>⚙️ Features:</b>
+<blockquote expandable><b>⚙️ Features:</b>
   ✅ Multiple quality options (YouTube)
   ✅ No-watermark TikTok videos
   ✅ Fast processing
@@ -1407,7 +1407,7 @@ def cmd_help(msg):
 <b>A:</b> Some platforms have restrictions. Try again later.
 
 <b>Q:</b> File too large?
-<b>A:</b> You'll receive a direct download link instead
+<b>A:</b> You'll receive a direct download link instead</blockquote>
 
 <b>💬 Need more help?</b>
 Use /supported to see all platforms
@@ -1427,7 +1427,7 @@ def cmd_about(msg):
 <b>🎯 Purpose:</b>
 Download media from multiple platforms instantly!
 
-<b>🔧 Technology:</b>
+<blockquote expandable><b>🔧 Technology:</b>
   • Python + Telegram Bot API
   • Multiple API integrations
   • Real-time processing
@@ -1440,7 +1440,7 @@ Download media from multiple platforms instantly!
 <b>🔐 Privacy:</b>
   • No data stored
   • No user tracking
-  • Secure downloads
+  • Secure downloads</blockquote>
 
 <b>👨‍💻 Developer:</b> Open Source Project
 <b>📅 Last Updated:</b> November 2025
@@ -1455,7 +1455,7 @@ def cmd_supported(msg):
     platforms_text = """
 <b>🌐 SUPPORTED PLATFORMS</b>
 
-<b>✅ Fully Supported:</b>
+<blockquote expandable><b>✅ Fully Supported:</b>
 
 <b>1. YouTube</b> 🎥
   • Videos (all qualities)
@@ -1488,7 +1488,7 @@ def cmd_supported(msg):
   • Twitter/X videos
   • Facebook videos
   • TikTok (some regions)
-  • And more...
+  • And more...</blockquote>
 
 <b>💡 Tip:</b> Just send any media URL and I'll try to download it!
 
