@@ -2201,10 +2201,27 @@ if __name__ == '__main__':
     print("🤖 Bot is starting...", flush=True)
     try:
         # Remove any existing webhook to force polling mode
+        if not TOKEN:
+            print("❌ Error: TELEGRAM_TOKEN is missing!", flush=True)
+            return
+
         bot.remove_webhook()
         time.sleep(1)
-        print("✅ Webhook removed, entering polling loop...", flush=True)
-        bot.infinity_polling(timeout=60, long_polling_timeout=60, logger_level=logging.INFO)
+        print("✅ Webhook removed.", flush=True)
+
+        # Identity check
+        try:
+            me = bot.get_me()
+            print(f"✅ Logged in as @{me.username} (ID: {me.id})", flush=True)
+        except Exception as e:
+            print(f"❌ Error getting bot info: {e}", flush=True)
+            raise
+
+        print("🔄 Entering polling loop with DEBUG logging...", flush=True)
+        # Enable detailed logging
+        telebot.logger.setLevel(logging.DEBUG)
+        
+        bot.infinity_polling(timeout=60, long_polling_timeout=60, logger_level=logging.DEBUG)
     except Exception as e:
         LOG.critical(f'Bot crashed: {e}')
         print(f"❌ CRITICAL ERROR: {e}", flush=True)
